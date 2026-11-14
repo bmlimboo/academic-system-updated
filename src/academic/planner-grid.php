@@ -11,7 +11,7 @@ foreach($entries as $entryIndex=>$entry){
 }
 ksort($columns);$dates=[];foreach($columns as $column)$dates[$column['date']]=($dates[$column['date']]??0)+1;
 ?>
-<link rel="stylesheet" href="assets/attendance-grid.css?v=1">
+<link rel="stylesheet" href="assets/attendance-grid.css?v=2">
 <p>One row per student. Scroll sideways for more dates. <?=!empty($readOnly)?'P = Present; A = Absent.':'Ticked / P = Present; unticked / A = Absent.'?> A dash means no entry for that student and session.</p>
 <div class="attendance-grid-scroll" tabindex="0" role="region" aria-label="Attendance register; scroll for additional dates">
 <table class="attendance-grid"><thead>
