@@ -1,7 +1,7 @@
 <?php
 // Uses existing audit history, including downloads made before this view was added.
 function examArchive(int $window, array $filters):array {
- $rows=all('SELECT p.*,e.module_code,e.module_title,e.department,e.programme,e.id AS assignment_id FROM exam_papers p JOIN exam_expected e ON e.id=p.expected_id WHERE e.window_id=? ORDER BY p.id DESC',[$window]);
+ $rows=all('SELECT p.*,e.module_code,e.module_title,e.department,e.programme,e.id AS assignment_id,w.submission_round AS current_round FROM exam_papers p JOIN exam_expected e ON e.id=p.expected_id JOIN exam_windows w ON w.id=e.window_id WHERE e.window_id=? ORDER BY p.id DESC',[$window]);
  $downloads=[];
  foreach(all("SELECT a.details,a.created_at,u.name FROM exam_audit a LEFT JOIN users u ON u.id=a.actor_id WHERE a.action='PDF downloaded' ORDER BY a.id") as $event){
   $d=json_decode($event['details'],true);if(($d['file']??'')!=='paper_path')continue;

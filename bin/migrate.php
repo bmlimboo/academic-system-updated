@@ -43,6 +43,7 @@ if(db()->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql')$sql=str_replace('INTEGER
 db()->exec($sql);
 echo "Exam Cell portal migration complete.\n";
 require __DIR__.'/migrate-exam-programmes.php';
+require __DIR__.'/migrate-exam-resubmissions.php';
 
 $sql=file_get_contents(__DIR__.'/../migrations/008_academic.sql');
 if(db()->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql')$sql=str_replace('INTEGER PRIMARY KEY AUTOINCREMENT','INTEGER PRIMARY KEY AUTO_INCREMENT',$sql);

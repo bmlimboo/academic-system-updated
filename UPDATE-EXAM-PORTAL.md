@@ -99,7 +99,7 @@ Officials dashboard: https://cas.cnr.edu.bt/?page=exam_manage
 - Select the examination, staff name, department; enter the exact registered staff email, module code and module title; upload a PDF and confirm.
 - Department may be the department being taught, even if different from the tutor's home department.
 - The registered email receives a receipt. Name/email matching is not proof of identity; Exam Cell should investigate any unexpected submission reported by the staff member.
-- One active paper per staff member + module code + examination. Additional distinct modules are allowed.
+- One active paper per staff member + module code + examination submission round. Additional distinct modules are allowed. If Exam Cell reopens a published period after its previous deadline, an official must select **Reopen as a new submission round** in the period editor and set a future closing time. A deadline extension without selecting this option does not increment the round or allow duplicate submissions. Staff can submit the same module again in that round; the new PDF becomes active and the earlier PDF is retained in the archive as **Superseded – Resubmitted**. The dashboard shows the round and submission status. Late-submission access is disabled when a new regular round is opened.
 - Submitted means at least one active paper received for that examination. Not submitted means none. The dashboard lists all currently active teaching staff, including teaching HoDs/DAA/PLs; it does not infer that every module paper is complete.
 - Text entries are retained on errors; browser file inputs must be selected again.
 
@@ -119,7 +119,7 @@ Officials dashboard: https://cas.cnr.edu.bt/?page=exam_manage
 - Archive is grouped by selected academic year / semester / examination; downloads include year, examination, module and staff name in their filename.
 - Only Exam Cell and administrators can download question papers and approval PDFs. They are not shown in the public services list.
 - Exam Cell can edit module title and department, or remove an incorrect paper with a reason. Removed versions are retained in the restricted archive and no longer count as Submitted unless another active paper exists.
-- Replacement is possible only during an open regular period or an enabled late period. Removing a paper does not bypass deadlines.
+- Removing a paper remains an audited manual action. Reopening a published period after its deadline creates a new submission round; this is the supported way to allow all eligible staff to resubmit the same module without deleting the earlier paper. Each staff/module can submit only once in each round. Previous PDFs remain available in the restricted archive.
 - Existing Exam Cell requisitions remain available under Requisition records. Exam Cell can update their status, correct purpose/details, or remove a mistaken requisition with a recorded reason.
 
 ## 9. Office-order notifications
