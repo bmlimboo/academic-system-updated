@@ -1,0 +1,15 @@
+.attendance-grid-scroll{max-width:100%;max-height:70vh;overflow:auto;margin:16px 0 24px;border:1px solid #9cb1c5;border-radius:6px}
+.attendance-grid{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:14px}
+.attendance-grid th,.attendance-grid td{padding:10px 12px;border-right:1px solid #b7c8d6;border-bottom:1px solid #b7c8d6;min-width:120px;text-align:center;vertical-align:middle}
+.attendance-grid thead th{background:#164d72;color:#fff;font-weight:700;white-space:normal;max-width:180px}
+.attendance-grid .grid-date-label{text-align:left}
+.attendance-grid tbody td,.attendance-grid tbody th{background:#fff;color:#203e59}
+.attendance-grid tbody tr:nth-child(even) td,.attendance-grid tbody tr:nth-child(even) th{background:#f1f6fa}
+.attendance-grid tbody td:first-child{min-width:60px}
+.attendance-grid tbody th{min-width:220px;text-align:left;font-weight:500}
+.attendance-grid-cell{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;margin:0!important;cursor:pointer}
+.attendance-grid-cell input[type=checkbox]{width:18px!important;height:18px!important;min-width:18px!important;padding:0!important;margin:0!important;accent-color:#176b52}
+.attendance-grid-cell .grid-present{color:#146747;font-weight:700}
+.attendance-grid-cell .grid-absent{color:#b12639;font-weight:700}
+.attendance-grid-cell input:checked~.grid-absent,.attendance-grid-cell input:not(:checked)~.grid-present{display:none}
+.attendance-grid-cell input:focus-visible{outline:3px solid #ecb324;outline-offset:3px}

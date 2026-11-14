@@ -1,0 +1,12 @@
+config/config.php
+config/config 2.php
+config/*.backup*
+.env
+vendor/
+node_modules/
+storage/
+uploads/
+*.sql
+*.zip
+*.tar.gz
+.DS_Store
