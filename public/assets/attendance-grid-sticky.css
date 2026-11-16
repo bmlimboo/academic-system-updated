@@ -1,0 +1,21 @@
+/* Freeze the whole blue header block (Date / period / Class Type / Classroom) while scrolling down,
+   and the Sl. No., Student ID and Student Name columns while scrolling sideways.
+   Offsets (--ag-top per header row, --ag-l2 / --ag-l3 per table) are measured by attendance-grid-sticky.js. */
+.attendance-grid thead th{position:sticky;top:var(--ag-top,0px);z-index:3}
+.attendance-grid thead tr:last-child th{box-shadow:0 2px 0 #9cb1c5}
+.attendance-grid thead th.grid-date-label,
+.attendance-grid thead tr:nth-child(2) th:nth-child(-n+3){left:0;z-index:5}
+.attendance-grid thead tr:nth-child(2) th:nth-child(2){left:var(--ag-l2,60px)}
+.attendance-grid thead tr:nth-child(2) th:nth-child(3){left:var(--ag-l3,180px)}
+.attendance-grid tbody tr>:nth-child(-n+3){position:sticky;z-index:2}
+.attendance-grid tbody tr>:nth-child(1){left:0}
+.attendance-grid tbody tr>:nth-child(2){left:var(--ag-l2,60px)}
+.attendance-grid tbody tr>:nth-child(3){left:var(--ag-l3,180px);box-shadow:2px 0 0 #9cb1c5}
+.attendance-grid thead tr:nth-child(2) th:nth-child(3){box-shadow:2px 0 0 #9cb1c5}
+/* Small screens: keep the header frozen, but let the left columns scroll so the dates stay reachable. */
+@media (max-width:720px){
+ .attendance-grid thead th.grid-date-label,
+ .attendance-grid thead tr:nth-child(2) th:nth-child(-n+3),
+ .attendance-grid tbody tr>:nth-child(-n+3){left:auto;position:static}
+ .attendance-grid thead th.grid-date-label,.attendance-grid thead tr:nth-child(2) th:nth-child(-n+3){position:sticky;z-index:3}
+}
