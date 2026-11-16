@@ -77,6 +77,12 @@ function spPost(array $u,string $action,array $p):int{
   q('DELETE FROM attendance_drafts WHERE record_id=?',[$id]);q('DELETE FROM attendance_timetable WHERE record_id=?',[$id]);q('DELETE FROM student_attendance_verifications WHERE record_id=?',[$id]);q('DELETE FROM academic_records WHERE id=?',[$id]);db()->commit();return 0;
  }elseif($action==='sa_plan_clear'){
   acAssert(spDeleteAllowed($u,$r),'Admin must grant attendance deletion permission.');acAssert(($p['confirmed']??'')==='1','Confirm deletion of recorded attendance.');$reason='Confirmed deletion';acAudit($u,$id,'Recorded attendance deleted',['before'=>$r['entries'],'draft'=>one('SELECT * FROM attendance_drafts WHERE record_id=?',[$id]),'reason'=>$reason]);q("UPDATE academic_records SET entries='[]',status='Draft',submitted_at=NULL WHERE id=?",[$id]);q('DELETE FROM attendance_drafts WHERE record_id=?',[$id]);
+ }elseif($action==='sa_plan_module_edit'){
+  $code=strtoupper(acText($p,'module_code',40));acAssert(preg_match('/^[A-Z0-9][A-Z0-9 -]{0,39}$/',$code)===1,'Use a module code of at most 40 letters, numbers, spaces or hyphens.');$name=acText($p,'module_name');
+  $identity=hash('sha256',acJson(array_map(fn($k)=>$k==='module_code'?$code:$r[$k],['kind','programme','academic_year','study_year','semester','section','module_code'])).($r['metadata']['attempt']??''));
+  acAssert(!one('SELECT id FROM academic_records WHERE identity_key=? AND id<>?',[$identity,$id]),'A module with this code already exists for the same programme, year, semester and section.');
+  if($code!==$r['module_code']||$name!==$r['module_name']){q('UPDATE academic_records SET module_code=?,module_name=?,identity_key=?,updated_at=? WHERE id=?',[$code,$name,$identity,now(),$id]);acAudit($u,$id,'Attendance module name/code corrected',['old_code'=>$r['module_code'],'new_code'=>$code,'old_name'=>$r['module_name'],'new_name'=>$name]);}
+  db()->commit();return $id;
  }elseif($action==='sa_plan_generate'){
   acAssert(!one('SELECT record_id FROM attendance_drafts WHERE record_id=?',[$id]),'Continue or discard the existing attendance draft first.');$entries=spGenerate($r,acText($p,'from',10),acText($p,'until',10));q('INSERT INTO attendance_drafts(record_id,entries,revision,updated_at) VALUES(?,?,?,?)',[$id,acJson($entries),$r['revision']+1,now()]);
  }elseif($action==='sa_plan_draft_discard'){q('DELETE FROM attendance_drafts WHERE record_id=?',[$id]);}
