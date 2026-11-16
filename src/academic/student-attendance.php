@@ -2,6 +2,9 @@
 require_once __DIR__.'/planner.php';
 function saReady():bool{try{q('SELECT id FROM student_attendance_windows LIMIT 1');return acReady();}catch(Throwable $e){return false;}}
 function saReviewer(?array $u):bool{return $u&&!empty($u['active'])&&in_array($u['role'],['exam','daa','admin'],true);}
+// Head of Department: read-only view of SUBMITTED attendance in their own department. No edit, verify, delete or download rights.
+function saHod(?array $u):bool{return $u&&!empty($u['active'])&&$u['role']==='hod'&&trim((string)($u['department']??''))!=='';}
+function saHodGet(array $u,int $id):array{$r=one("SELECT * FROM academic_records WHERE id=? AND kind='attendance' AND status='Submitted'",[$id]);acAssert($r&&saHod($u)&&$r['department']===$u['department'],'This attendance record is not available to your account.');return acHydrate($r);}
 function saTutor():?array{
  $official=isset($_SESSION['user'])?one('SELECT * FROM users WHERE id=?',[(int)$_SESSION['user']]):null;if($official&&(acTutor($official)||saReviewer($official))&&hash_equals(hash('sha256',$official['password']),$_SESSION['password_version']??''))return $official;
  $s=$_SESSION['sa_identity']??[];if(($s['expires']??0)<time())return null;$u=one('SELECT * FROM users WHERE id=?',[(int)($s['id']??0)]);return $u&&!acAdmin($u)&&acTutor($u)&&hash_equals($s['version']??'',hash('sha256',$u['email'].'|'.$u['password']))?$u:null;
