@@ -14,6 +14,7 @@ require_once __DIR__.'/college-calendar/core.php';
 require_once __DIR__.'/academic/download.php';
 require_once __DIR__.'/academic/student-attendance.php';
 require_once __DIR__.'/academic/attendance-matrix.php';
+require_once __DIR__.'/academic/attendance-bulk.php';
 if(is_file(__DIR__.'/../vendor/autoload.php'))require_once __DIR__.'/../vendor/autoload.php';
 require_once __DIR__.'/attendance/core.php';
 require_once __DIR__.'/attendance/calendar.php';
