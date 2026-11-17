@@ -59,29 +59,41 @@ function saEligibility(array $r,array $s):string{
  $v=saReady()?one('SELECT * FROM student_attendance_verifications WHERE record_id=? AND student_id=? AND record_revision=? ORDER BY id DESC LIMIT 1',[$r['id'],$s['id'],$r['revision']]):null;
  return !$v?'Supporting document and verification required':($v['decision']==='Approved'?'Allowed — supporting document verified':'Not allowed — verification rejected');
 }
+
+function saBulkDownload(?array $official):never{
+ acAssert($official&&saReviewer($official),'Attendance review access is restricted to Admin, Exam Cell and DAA.');
+ acAssert(class_exists('\\\\ZipArchive'),'ZIP support is not available on this server.');
+ $items=saReviewRecords($official,$_GET);acAssert((bool)$items,'No submitted attendance registers match the selected filters.');
+ $zipPath=tempnam(sys_get_temp_dir(),'sa-registers-');acAssert($zipPath!==false,'Unable to prepare the ZIP download.');
+ $zip=new \\ZipArchive();$opened=$zip->open($zipPath,\\ZipArchive::CREATE|\\ZipArchive::OVERWRITE);if($opened!==true){@unlink($zipPath);throw new RuntimeException('Unable to create the attendance ZIP file.');}
+ $temporaryFiles=[];
+ try{
+  foreach($items as $item){
+   $r=one(\"SELECT * FROM academic_records WHERE id=? AND kind='attendance' AND status='Submitted'\",[(int)$item['id']]);acAssert((bool)$r,'A submitted attendance register changed during ZIP generation.');$r=acHydrate($r);
+   $book=saRegisterWorkbook($r,'register',true);$xlsxPath=tempnam(sys_get_temp_dir(),'sa-xlsx-');acAssert($xlsxPath!==false,'Unable to prepare an Excel register.');$temporaryFiles[]=$xlsxPath;
+   (new \\PhpOffice\\PhpSpreadsheet\\Writer\\Xlsx($book))->save($xlsxPath);$book->disconnectWorksheets();
+   $base=preg_replace('/[^A-Za-z0-9._-]+/','_',implode('_',[$r['module_code'],$r['module_name'],$r['programme'],$r['academic_year'],$r['study_year'],$r['semester'],$r['section']]));$filename=trim((string)$base,'._-').'-'.$r['id'].'.xlsx';
+   acAssert($zip->addFile($xlsxPath,$filename),'Unable to add '.$filename.' to the ZIP file.');
+  }
+  acAssert($zip->close(),'Unable to finish the attendance ZIP file.');
+  header('Content-Type: application/zip');header('Content-Disposition: attachment; filename="attendance-registers-'.date('Ymd-His').'.zip"');header('Content-Length: '.filesize($zipPath));readfile($zipPath);
+ }finally{
+  if($zip->status!==\\ZipArchive::ER_OK)@$zip->close();foreach($temporaryFiles as $file)@unlink($file);@unlink($zipPath);
+ }
+ exit;
+}
 function saDownload(?array $official):never{
  acAssert($official&&(acTutor($official)||saReviewer($official)),'Sign in to CAS to access attendance.');
  if(($_GET['mode']??'')==='students_template'){acAssert(saReviewer($official),'Reviewer access required.');$book=new \PhpOffice\PhpSpreadsheet\Spreadsheet();acWriteSheet($book->getActiveSheet(),spStudentHeaders(),[]);$book->getActiveSheet()->getStyle('A2:A5001')->getNumberFormat()->setFormatCode('@');$instructions=$book->createSheet()->setTitle('Instructions');$instructions->setCellValue('A1','Enter students on the first sheet. Keep Student ID as text including leading zeroes.');$instructions->setCellValue('A2','Academic year: 2026-2027. Year: I, II, III or IV. Semester: I or II. Section must match the module (e.g. A).');$instructions->setCellValue('A3','Use exact department/programme names from the register form. Active: 1 enabled, 0 disabled. Existing Student IDs update the register; attendance history is retained.');$instructions->setCellValue('A4','Gender: Male, Female, Other, Prefer not to say, or leave blank.');$instructions->getColumnDimension('A')->setWidth(120);$instructions->getStyle('A1:A4')->getAlignment()->setWrapText(true);$book->setActiveSheetIndex(0);header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');header('Content-Disposition: attachment; filename=student-register-template.xlsx');(new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save('php://output');exit;}acAssert(saReady(),'Attendance setup required.');$id=(int)($_GET['id']??0);$r=one("SELECT * FROM academic_records WHERE id=? AND kind='attendance'",[$id]);acAssert((bool)$r,'Module not found.');$r=acHydrate($r);$tutor=saTutor();$owner=$tutor&&(int)$r['owner_id']===(int)$tutor['id'];$review=acAdmin($official)||(saReviewer($official)&&$r['status']==='Submitted');$mode=$_GET['mode']??'template';acAssert($review||$owner,'Access denied.');
  if($mode==='support'){acAssert($review,'Only Admin / Exam Cell / DAA can download supporting documents.');$v=one('SELECT * FROM student_attendance_verifications WHERE id=? AND record_id=?',[(int)($_GET['document_id']??0),$id]);acAssert((bool)$v,'Document not found.');header('Content-Type: application/pdf');header('Content-Disposition: attachment; filename="attendance-support.pdf"');readfile(__DIR__.'/../../storage/attendance-support/'.$v['document_path']);exit;}
- acAssert($mode==='template'||$review||($owner&&$r['status']==='Draft'),'Submitted student entries are restricted to Exam Cell / DAA.');$rows=saMatrix($r,$mode==='template');
- if(($_GET['format']??'')==='csv'){header('Content-Type: text/csv; charset=utf-8');header('Content-Disposition: attachment; filename="attendance-register.csv"');$f=fopen('php://output','w');fwrite($f,"\xEF\xBB\xBF");foreach($rows as $row)fputcsv($f,array_map(fn($v)=>preg_match('/^[=+@\-\t\r]/',(string)$v)?"'".$v:$v,$row));exit;}
- $book=new \PhpOffice\PhpSpreadsheet\Spreadsheet();$sheet=$book->getActiveSheet()->setTitle('Register');foreach($rows as $i=>$row)foreach($row as $j=>$v)$sheet->setCellValueExplicit([$j+1,$i+1],(string)$v,\PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);$sheet->freezePane('D5');$last=\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($rows[1]));$sheet->getStyle('A1:'.$last.'4')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');$sheet->getStyle('A1:'.$last.'4')->getFill()->setFillType('solid')->getStartColor()->setARGB('FF164D72');$sheet->getColumnDimension('A')->setWidth(10);$sheet->getColumnDimension('B')->setWidth(20);$sheet->getColumnDimension('C')->setWidth(30);for($c=4;$c<=count($rows[1]);$c++)$sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c))->setWidth(18);
- // Merge date headings for the same day, matching the printed attendance register.
- $dateCells=array_slice($rows[0],3);for($c=0;$c<count($dateCells);){$span=1;while(isset($dateCells[$c+$span])&&($mode==='template'||$dateCells[$c+$span]===$dateCells[$c]))$span++;if($span>1)$sheet->mergeCells([$c+4,1,$c+$span+3,1]);$c+=$span;}
- // Provide visible writing rows even in a new, empty template; blank rows are ignored on import.
- $endRow=$mode==='template'?34:max(4,count($rows));
- $sheet->getStyle('A1:'.$last.$endRow)->getBorders()->getAllBorders()->setBorderStyle('thin')->getColor()->setARGB('FF9CB1C5');
- $sheet->getStyle('A1:'.$last.$endRow)->getAlignment()->setVertical('center');
- $sheet->getStyle('D1:'.$last.$endRow)->getAlignment()->setHorizontal('center');
- $sheet->getStyle('A1:'.$last.'4')->getAlignment()->setWrapText(true);
- for($row=1;$row<=$endRow;$row++){$sheet->getRowDimension($row)->setRowHeight($row<=4?30:24);if($row>=5&&$row%2===0)$sheet->getStyle('A'.$row.':'.$last.$row)->getFill()->setFillType('solid')->getStartColor()->setARGB('FFF2F6FB');}
- $sheet->getStyle('B5:B'.$endRow)->getNumberFormat()->setFormatCode('@');
- for($column=4;$column<=\PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($last);$column++){
-  $validation=$sheet->getCell([$column,3])->getDataValidation();
-  $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST)->setErrorStyle('stop')->setAllowBlank(false)->setShowDropDown(true)->setShowErrorMessage(true)->setErrorTitle('Invalid class type')->setError('Choose a class type from the list.')->setFormula1('"'.implode(',',acClassTypes()).'"');
- }
-
- $sheet->getPageSetup()->setOrientation('landscape')->setFitToWidth(1)->setFitToHeight(0)->setRowsToRepeatAtTopByStartAndEnd(1,4);
- if($review&&$mode!=='template'){$summary=[];$report=acAttendance($r);foreach($report['students']as $student)$summary[]=[count($summary)+1,$student['id'],$student['name'],$r['contact_hours'],$student['present'],$student['absent'],$student['extra_present'],$student['percentage'],$student['recorded_percentage'],saEligibility($r,$student),$report['complete']?'Complete recorded coverage':'Provisional: check missing uploads'];acWriteSheet($book->createSheet()->setTitle('Eligibility'),['Sl. No.','Student ID','Student Name','DPD hours','Present','Absent','Extra class','Attendance % (DPD)','Recorded-session %','Remarks','DPD coverage'],$summary);}
- $info=$book->createSheet()->setTitle('Instructions');$lines=[$r['module_code'].' · '.$r['module_name'],$r['programme'].' · '.$r['academic_year'].' · Year '.$r['study_year'].' · Semester '.$r['semester'].' · Section '.$r['section'],'DPD hours: '.$r['contact_hours'],'Enter ISO dates (YYYY-MM-DD) in row 1. Repeat the date over each period, or leave cells blank after the first date in a group.','Copy period columns to the right for more dates. Keep the first four rows and the first three columns.','One student per row from row 5. Use P or A. Unused periods must be blank for every student.','Class Type is Regular, Extra, Block Week, Block Day, Substitution or Practical. Exam eligibility uses present / recorded sessions (including all class types) x 100. DPD percentage is for reference only.','Use Add attendance for a later upload to the same module. Identical cells are ignored; different previously submitted cells require Exam Cell / DAA correction.','Maximum 400 period columns, 200,000 cells per file and 5,000 student/date/type entries per module.'];foreach($lines as $i=>$line)$info->setCellValueExplicit([1,$i+1],$line,\PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);$info->getColumnDimension('A')->setWidth(120);$book->setActiveSheetIndex(0);header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');header('Content-Disposition: attachment; filename="attendance-register.xlsx"');(new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save('php://output');exit;
+ acAssert($mode==='template'||$review||($owner&&$r['status']==='Draft'),'Submitted student entries are restricted to Exam Cell / DAA.');$rows=saMatrix($r,$mode==='template');$book=saRegisterWorkbook($r,$mode,$review);header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');header('Content-Disposition: attachment; filename="attendance-register.xlsx"');(new \\PhpOffice\\PhpSpreadsheet\\Writer\\Xlsx($book))->save('php://output');exit;
 }
+function saReviewRecords(array $official,array $filters=[]):array{
+ acAssert(saReviewer($official),'Attendance review access is restricted to Admin, Exam Cell and DAA.');
+ $filters=array_intersect_key($filters,array_flip(['department','programme','academic_year','search']));
+ $sql="SELECT r.id,r.module_code,r.module_name,r.programme,r.department,r.academic_year,r.study_year,r.semester,r.section,r.updated_at,u.name FROM academic_records r JOIN users u ON u.id=r.owner_id WHERE r.kind='attendance' AND r.status='Submitted'";$args=[];
+ foreach(['department','programme','academic_year'] as $key)if(!empty($filters[$key])){$sql.=' AND r.'.$key.'=?';$args[]=$filters[$key];}
+ if(!empty($filters['search'])){$sql.=' AND (u.name LIKE ? OR r.module_code LIKE ?)';$args[]='%'.$filters['search'].'%';$args[]='%'.$filters['search'].'%';}
+ return all($sql.' ORDER BY r.updated_at DESC,r.id DESC',$args);
+}
+
