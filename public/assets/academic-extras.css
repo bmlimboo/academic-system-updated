@@ -1,0 +1,7 @@
+/* Search box above long lists, and red highlighting of failed marks in the consolidated report. */
+.ac-search{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.ac-search input[type=search]{flex:1 1 260px;min-width:200px;max-width:520px;margin:0}
+.ac-search .button,.ac-search button{margin:0;white-space:nowrap}
+.ac-consolidated td.ac-fail{color:#b12639;font-weight:700;background:#fdecee}
+.ac-consolidated td.ac-remarks{white-space:nowrap;text-align:center}
+@media print{.ac-search{display:none}.ac-consolidated td.ac-fail{color:#b12639;background:#fdecee;-webkit-print-color-adjust:exact;print-color-adjust:exact}}

@@ -131,9 +131,17 @@ function acReportRecords(array $u,array $filters):array{
 function acConsolidate(array $records):array{
  $groups=[];foreach($records as $r){if($r['kind']!=='assessment'||!$r['entries'])continue;$key=implode(' · ',[$r['programme'],'Year '.$r['study_year'],'Semester '.$r['semester'],$r['academic_year'],'Section '.$r['section']]);$groups[$key]['modules'][$r['id']]=$r;foreach($r['entries']as $v){$id=$v['student_id'];$groups[$key]['students'][$id]??=['id'=>$id,'name'=>$v['student_name'],'marks'=>[],'name_conflict'=>false];if($groups[$key]['students'][$id]['name']!==$v['student_name'])$groups[$key]['students'][$id]['name_conflict']=true;$groups[$key]['students'][$id]['marks'][$r['id']]=acMarks($r,$v);}}
  foreach($records as $r){if($r['kind']!=='reassessment')continue;foreach($groups as &$g){$originalId=$r['metadata']['original_id'];if(!isset($g['modules'][$originalId]))continue;foreach($r['entries']as $v){$sid=$v['student_id'];if(!isset($g['students'][$sid]))continue;$old=$g['students'][$sid]['marks'][$originalId];if(($old['reassessment_id']??0)>(int)$r['id'])continue;$new=acMarks($r,$v);$new['reassessment_id']=(int)$r['id'];$g['students'][$sid]['marks'][$originalId]=$new;}}unset($g);}
- foreach($groups as &$g){foreach($g['students']as &$s){$totals=array_column($s['marks'],'total');$s['complete']=count($totals)===count($g['modules'])&&!in_array(null,$totals,true);$s['average']=$s['complete']?round(array_sum($totals)/count($totals),2):null;}unset($s);}unset($g);return $groups;
+ foreach($groups as &$g){foreach($g['students']as &$s){$totals=array_column($s['marks'],'total');$s['complete']=count($totals)===count($g['modules'])&&!in_array(null,$totals,true);$s['average']=$s['complete']?round(array_sum($totals)/count($totals),2):null;$s['total']=$s['complete']?round(array_sum($totals),2):null;$s['failed']=in_array('Fail',array_column($s['marks'],'result'),true);}unset($s);acAssignRemarks($g['students']);}unset($g);return $groups;
 }
 
+// Remarks column of the consolidated report: Fail if any module failed; otherwise the position (1st to 10th, ties share a position)
+// among students who passed every module, then Pass for the rest. Students with a missing module mark show Incomplete.
+function acOrdinal(int $n):string{return $n.(in_array($n%100,[11,12,13],true)?'th':([1=>'st',2=>'nd',3=>'rd'][$n%10]??'th'));}
+function acAssignRemarks(array &$students):void{
+ $pool=array_filter($students,fn($s)=>$s['complete']&&!$s['failed']);uasort($pool,fn($a,$b)=>$b['total']<=>$a['total']);
+ $pos=[];$i=0;$prev=null;$rank=0;foreach($pool as $id=>$s){$i++;if($prev===null||abs($s['total']-$prev)>0.00001)$rank=$i;$prev=$s['total'];$pos[$id]=$rank;}
+ foreach($students as $id=>&$s){$s['position']=$pos[$id]??null;$s['remarks']=$s['failed']?'Fail':(!$s['complete']?'Incomplete':($pos[$id]<=10?acOrdinal($pos[$id]):'Pass'));}unset($s);
+}
 function acDateTimeValid(string $v):bool{$d=DateTimeImmutable::createFromFormat('!Y-m-d H:i',$v);return $d&&$d->format('Y-m-d H:i')===$v;}
 function acWindowOpen(array $r,bool $lock=false):bool{
  $sql='SELECT * FROM academic_reassessment_windows WHERE id=?'.($lock&&db()->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?' FOR UPDATE':'');$w=one($sql,[(int)($r['metadata']['window_id']??0)]);
