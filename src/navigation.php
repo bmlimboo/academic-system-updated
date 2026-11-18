@@ -11,7 +11,7 @@ function navigationExtras(array $u):array{
  if(acTutor($u)||saReviewer($u))$links['?page=sa_portal']='Student Attendance · CAS';
   if(canDocuments($u)&&!in_array($role,['hod','faculty','president','pl'],true))$links['?page=documents']='Programme Documents (DPD)';
  if($role==='admin'){$links['?page=teaching']='Teaching Staff';$links['?page=admin']='Users & Notifications';$links['?page=import']='Import Historical Data';}
- $links['/signdesk/']='Document Signing';
+ $links['/desks/sd/index.php']='Document Signing';
  $links[$role==='guest'?'?page=alumni_register':'/desks/cd/index.php']='Certificate Requests';
  // Academic access remains beside Help, at the end of navigation.
  if(acAccess($u))$links['?page=ac_home']='Academic · Attendance & Marks';elseif($role==='guest')$links['?page=login']='Academic · Staff login';
